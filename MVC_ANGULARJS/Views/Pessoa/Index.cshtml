@@ -1,0 +1,124 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    string pessoas = (string)ViewData["pessoas"];
+}
+
+<h2>Index</h2>
+
+<div ng-app="myApp" ng-controller="myCtrl">
+
+    <h3>Pessoa</h3>
+    <div>
+        <form ng-submit="submitPessoa()">
+            <label>Nome</label>
+            <input ng-model="pessoa.Nome" placeholder="Nome" type="text" />
+            <br />
+            <label>Telefones</label><br />
+            <div ng-repeat="telefone in pessoa.Telefones track by $index">
+                <input type="text" placeholder="(99)9 9999-9999" ng-model="telefone.Numero">
+                <a class="remove" ng-show="pessoa.Telefones.length > 0" ng-click="removeTelefone($index)">Remover</a>
+            </div>
+            <a ng-click="addTelefone()">Add Telefone</a>
+            <br /><br />
+            <input type="submit" value="{{pessoa.Id == null ? 'Save' : 'Edit'}}" />
+            <a ng-click="pessoa = getPessoa();">Limpar</a>
+        </form>
+    </div>
+
+    <br />
+
+    <p><input type="text" placeholder="Buscar Pessoa" ng-model="search"></p>
+
+    <table class="table table-condensed">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Nome</th>
+                <th>Numeros</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr dir-paginate="pessoa in pessoas| filter: search | orderBy: 'Nome' | itemsPerPage: 2" pagination-id="paginationTableID">
+                <th scope="row">{{ pessoa.Id }}</th>
+                <td>{{ pessoa.Nome }}</td>
+                <td>{{ pessoa.Numeros }}</td>
+                <td>
+                    <button ng-click="editPessoa(pessoa)">Editar</button>
+                    <button ng-click="removePessoa(pessoa.Id)">Remover</button>
+                </td>
+            </tr>
+        </tbody>
+      </table>
+    <dir-pagination-controls max-size="10" boundary-links="true" pagination-id="paginationTableID"></dir-pagination-controls>
+
+</div>
+<script src="~/Content/pagination.js"></script>
+<script>
+    var app = angular.module('myApp', ['angularUtils.directives.dirPagination']);
+    app.controller('myCtrl', function ($scope, $http) {
+
+        $scope.pessoas = @Html.Raw(pessoas);
+
+        $scope.getPessoa = function () {
+            return {
+                "Id": null,
+                "Nome": '',
+                "Telefones": [{
+                    "Id": null,
+                    "Numero": ''
+                }]
+            };
+        };
+
+        //Form Save Pessoa
+        $scope.pessoa = $scope.getPessoa();
+        $scope.listDeleteTelefones = [];
+
+        $scope.addTelefone = function () {
+            $scope.pessoa.Telefones.push({ 'Numero': '' });
+        };
+
+        $scope.removeTelefone = function (index) {
+            var telefone = $scope.pessoa.Telefones[index];
+            console.log(telefone);
+            if (telefone.Id != null) {
+                $scope.listDeleteTelefones.push(telefone);
+                console.log($scope.listDeleteTelefones);
+            }
+            $scope.pessoa.Telefones.splice(index, 1);
+        };
+
+        $scope.submitPessoa = function () {
+            console.log('SUBMIT');
+
+            $http.post('@Url.Action("Save", "Pessoa")', { pessoa: $scope.pessoa, deleteTelefones: $scope.listDeleteTelefones }).then(function (response) {
+                $scope.pessoas = JSON.parse(response.data.Value);
+            }).catch(function (e) {
+
+            }).finally( function () {
+                $scope.pessoa = $scope.getPessoa();
+                $scope.listDeleteTelefones = [];
+            });
+
+        };
+
+        $scope.removePessoa = function (id) {
+            $http.get('/Pessoa/Delete?id=' + id).then(function (response) {
+                $scope.pessoas = JSON.parse(response.data.Value);
+            }).catch(function (e) {
+                console.log(e);
+            }).finally( function () {
+            });
+
+        };
+
+        $scope.editPessoa = function (pessoa) {
+            $scope.pessoa = pessoa;
+            if ($scope.pessoa.Telefones.length === 0) {
+                $scope.pessoa.Telefones = [{ 'Numero': '' }];
+            }
+        };
+    });
+</script>
